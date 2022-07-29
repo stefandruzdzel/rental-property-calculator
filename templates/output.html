@@ -1,0 +1,63 @@
+{% extends "layout.html" %}
+
+
+{% block main %}
+<h1>Output</h1>
+
+<ul class="list-group">
+    <li class="list-group-item">Output is based on 100 iterations</li>
+    <li class="list-group-item">All numbers are inflation adjusted</li>
+</ul>
+
+{{ fig1 | safe}}
+
+{{ fig2 | safe}}
+
+
+    <table class="table">
+        <tr>
+            <th style="width:5%" colspan="1"></th>
+            <th style="width:15%" colspan="3">Annual Cashflow</th>
+            <th style="width:15%" colspan="3">Profit If Sold</th>
+            <th style="width:15%" colspan="3">Cumulative Cash on Cash Return (Annualized)</th>
+            <th style="width:15%" colspan="3">Total Return (IRR) If Sold (Annualized)</th>
+
+
+        </tr>
+        <tr>
+            <td>Year</td>
+            <td>20th</td>
+            <td>50th</td>
+            <td>80th</td>
+            <td>20th</td>
+            <td>50th</td>
+            <td>80th</td>
+            <td>20th</td>
+            <td>50th</td>
+            <td>80th</td>
+            <td>20th</td>
+            <td>50th</td>
+            <td>80th</td>
+        </tr>
+        {% for row in table %}
+        <tr>
+            <td>{{row[0]}}</td>
+            <td>{{row[1]}}</td>
+            <td>{{row[2]}}</td>
+            <td>{{row[3]}}</td>
+            <td>{{row[4]}}</td>
+            <td>{{row[5]}}</td>
+            <td>{{row[6]}}</td>
+            <td>{{row[7]}}</td>
+            <td>{{row[8]}}</td>
+            <td>{{row[9]}}</td>
+            <td>{{row[10]}}</td>
+            <td>{{row[11]}}</td>
+            <td>{{row[12]}}</td>
+
+        </tr>
+        {% endfor %}
+    </table>
+
+
+{% endblock %}

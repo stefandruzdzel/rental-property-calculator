@@ -1,0 +1,510 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Home Page
+{% endblock %}
+
+{% block main %}
+
+{{errorMessage | safe}}
+
+<script>
+    function hideShow(formName,x){							
+        if (x=='show'){		
+            document.getElementById(formName).style.display = 'block';						
+        }else{							
+            document.getElementById(formName).style.display = 'none';						
+        }	
+    }			
+</script>
+<py-script>
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import norm
+import pandas as pd
+import matplotlib.ticker as mtick
+from scipy.stats import betaprime
+
+def plot_beta_prime(skew, targetMean, parameter):
+    fig, ax = plt.subplots()
+    X_AXIS_CONSTANT = 5
+
+    if parameter == 'maintenance':
+        #targetMean = 200
+        alpha = 1
+        ax.set_xlabel('Monthly Maintenance')
+        beta = 1.2 ** skew - .15
+        xfmt = '$'+'%.0f'
+        xticks = mtick.FormatStrFormatter(xfmt)
+        ax.xaxis.set_major_formatter(lambda x,pos:'$'+str(int(x)))
+        bucketSize = 100
+    elif parameter == 'tenantStay':
+        #targetMean = 36
+        alpha = 10
+        beta = 2.6+skew/2.4 #4 #4 to 7
+        ax.set_xlabel('Tentant Stay Length (Mo)')
+        bucketSize = 6
+
+    t = np.linspace(0, targetMean * X_AXIS_CONSTANT, 1000)
+ 
+    # Format the Y-axis as percentage
+    yfmt = '%.0f%%' 
+    yticks = mtick.FormatStrFormatter(yfmt)
+    ax.yaxis.set_major_formatter(yticks)
+    
+    mean, var, skew, kurt = betaprime.stats(alpha, beta, moments='mvsk')
+    scale = targetMean/mean
+    cdf = betaprime.cdf(t/scale, alpha, beta)
+    hist = betaprime.rvs(alpha, beta, size=2000)*scale
+    
+    pd.DataFrame(hist,columns=['Likelihood']).plot(ax=ax,kind='hist',weights=np.ones(2000)*100./2000,bins=range(0,int(targetMean * X_AXIS_CONSTANT)+bucketSize,bucketSize))
+    pd.DataFrame(cdf*100.,index=t,columns=['Cumulative Likelihood (CDF)']).plot(ax=ax,kind='line')
+    
+    ax.set_xlim(0, targetMean * X_AXIS_CONSTANT)
+    ax.set_ylim(0,100)
+    return fig
+
+def plot_normal(std, mean, parameter):
+    
+    fig, ax = plt.subplots()
+    
+    fmt = '%.0f%%'
+    ticks = mtick.FormatStrFormatter(fmt)
+    ax.yaxis.set_major_formatter(ticks)
+    ax.xaxis.set_major_formatter(ticks)
+    
+    if parameter == 'rent':
+        ax.set_xlabel('Annual Change In Rent')
+    elif parameter == 'appreciation':
+        ax.set_xlabel('Annual Appreciation')    
+    elif parameter == 'inflation':
+        ax.set_xlabel('Annual Inflation')       
+        
+    t = np.linspace(mean-3*std, mean+3*std, 1000)
+    
+    dist = norm()
+    cdf = dist.cdf(np.linspace(-3,3,1000))
+    hist = dist.rvs(size = 2000)*std+mean
+    
+    if std > 2:
+        bucketSize = 2
+    else:
+        bucketSize = 1
+    
+    pd.DataFrame(hist,columns=['Likelihood']).plot(ax=ax,kind='hist',weights=np.ones(2000)*100./2000,bins=range(int(min(t)),int(max(t))+bucketSize,bucketSize))
+    pd.DataFrame(cdf*100.,index=t,columns=['Cumulative Likelihood (CDF)']).plot(ax=ax,kind='line')
+    ax.set_xlim(min(t),max(t))
+    return fig
+
+</py-script>
+
+
+<div class="container-lg">
+    <ul class="list-group">
+        <li class="list-group-item">Welcome! The purpose of this rental property calculator is to replace "dumb averages" with a range of possible outcomes.</li>
+        <li class="list-group-item">Appreciation, inflation, interest rates for Adjustable Rate Mortgages are based on historical data provided by the <a href="https://fred.stlouisfed.org/series/DFF/">Federal Reserve</a>, from 1981 to 2022.  Do not place undue reliance on these figures, for a number of reasons, actual results may vary greatly.</li>
+        <li class="list-group-item">Inflation affects property tax, home insurance, maintenance, other costs, and property manager flat annual fees (if applicable).</li>
+        <li class="list-group-item">Rent is only brought to market rent yearly, or when there is a new tenant.</li>
+      </ul>
+    <form type="submit" action="/" method="post">
+        <br>
+
+        <div class="row g-2">
+            <div class="col-6">
+                <label for="price">Purchase Price</label>
+                <input type="text" class="form-control" id="price" name="price" value="$200,000" required>
+            </div>
+
+            <div class="col-6">
+                <label for="downPaymentGroup">Down Payment (%)</label>
+                <div class="input-group" id="downPaymentGroup">
+                    
+                    <input type="text" class="form-control" id="down" name="down" value="20" required>
+                    <div class="input-group-append">
+                        <span class="input-group-text">%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-2">
+            <div class="col-6">
+                <label for="rateGroup">Interest Rate</label>
+                <div class="input-group" id="rateGroup">
+                    
+                    <input type="text" class="form-control" id="rate" name="rate" value="5.5" required>
+                    <div class="input-group-append">
+                        <span class="input-group-text">%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-6">
+                <label for="term">Loan Term (Years)</label>
+                <input type="text" class="form-control" id="term" name="term" value="30" required>
+            </div>
+        </div>
+
+        <div class="row g-2">
+            <div class="col-6">
+                <label for="term">Closing Costs</label>
+                <input type="text" class="form-control" id="closingCosts" name="closingCosts" value="3000" required>
+            </div>
+        </div>
+
+
+        <!--Appreciation-->
+        <br>
+        <div class="card">
+            <strong>Appreciation</strong>
+            <div class="form-row">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label for="meanAppreciationGroup">Average Annual Appreciation</label>
+                        <div class="input-group" id="meanAppreciationGroup">
+                            
+                            <input type="text" class="form-control" id="meanAppreciation" name="meanAppreciation" value="4.21" required>
+                            <div class="input-group-append">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <label for="appreciationStdGroup">Standard Deviation</label>
+                        <div class="input-group" id="appreciationStdGroup">
+                            
+                            <input type="text" class="form-control" id="appreciationStd" name="appreciationStd" value="4.22" required>
+                            <div class="input-group-append">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="plot_appreciation">
+            <py-script>
+            import numpy as np
+            from pyodide import create_proxy, to_js
+            
+            range1_appreciation = document.querySelector("#meanAppreciation")
+            range2_appreciation = document.querySelector("#appreciationStd")
+
+            def on_range_update_appreciation(event):
+                mean = float(Element("meanAppreciation").element.value)
+                std = float(Element("appreciationStd").element.value)
+
+                fig = plot_normal(std=std, mean=mean, parameter='appreciation')
+
+                pyscript.write("plot_appreciation",fig)
+
+            proxy = create_proxy(on_range_update_appreciation)
+            range1_appreciation.addEventListener("change", proxy)
+            range2_appreciation.addEventListener("change", proxy)
+
+            on_range_update_appreciation('') #So the chart is created the first time
+
+            </py-script>
+            </div>
+        </div>
+        <br>
+        <div class="form-row">
+            <label for="sellGroup">Cost to Sell</label>
+            <div class="input-group" id="sellGroup">
+                <input type="text" class="form-control" id="sellCost" name="sellCost" value="10" required>
+                <div class="input-group-append">
+                    <span class="input-group-text">%</span>
+                </div>
+            </div>
+        </div>
+        <!--ARM-->
+        <div class="form-row">
+            <label for="arm">Adjustable Rate Mortgage?</label>
+            <div class="custom-control custom-radio custom-control-inline" onclick="hideShow('armInputRow','hide')" style="margin-left:30px;">
+                <input type="radio" id="armNo" name="armNo" class="custom-control-input" value="No" checked="">
+                <label class="custom-control-label" for="armNo">No</label>
+            </div>
+            <div class="custom-control custom-radio custom-control-inline" onclick="hideShow('armInputRow','show')">
+                <input type="radio" id="armYes" name="armNo" class="custom-control-input" value="Yes">
+                <label class="custom-control-label" for="armYes">Yes</label>
+            </div>
+        </div>
+
+        <div class = "form-row" name="arm" style="margin-left: 40px;">
+            <div class = "form-row" id="armInputRow" style="display:none">
+                <div class="form-row">
+                    <small class="form-text text-muted">To read more about ARM's click
+                    <a href="https://www.consumerfinance.gov/ask-cfpb/with-an-adjustable-rate-mortgage-arm-what-are-rate-caps-and-how-do-they-work-en-1951/">here.</a>
+                    </small>
+                </div>
+
+                <label for="armYears">Fixed Years</label>
+                <input type="text" class="form-control" id="armYears" name="armYears" value="5">
+                
+                <label for="arm2">Margin</label>
+                <div class="input-group" id="arm2">
+                    <input type="text" class="form-control" id="armMargin" name="armMargin" value="1">
+                    <div class="input-group-append">
+                        <span class="input-group-text">%</span>
+                    </div>
+                </div>
+
+                <label for="arm3">Annual Adjustment Cap</label>
+                <div class="input-group" id = "arm3">
+                    <input type="text" class="form-control" id="armAAC" name="armAAC" value="2">
+                    <div class="input-group-append">
+                        <span class="input-group-text">%</span>
+                    </div>
+                </div>
+                <label for="arm4">Lifetime Adjustment Cap</label>
+                <div class="input-group" id="arm4">
+                    <input type="text" class="form-control" id="armLAC" name="armLAC" value="5">
+                    <div class="input-group-append">
+                        <span class="input-group-text">%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!--Prepayment penalty-->
+        <div class="form-row">
+            <label for="ppp">Pre payment penalties?</label>
+            <div class="custom-control custom-radio custom-control-inline" onclick="hideShow('pppInputRow','hide')" style="margin-left:30px;">
+                <input type="radio" id="pppNo" name="pppNo" class="custom-control-input" value="No" checked="">
+                <label class="custom-control-label" for="pppNo">No</label>
+            </div>
+            <div class="custom-control custom-radio custom-control-inline" onclick="hideShow('pppInputRow','show')">
+                <input type="radio" id="pppYes" name="pppNo" class="custom-control-input" value="Yes">
+                <label class="custom-control-label" for="pppYes">Yes</label>
+            </div>
+        </div>
+        <div class = "form-row" name="ppp" style="margin-left: 40px;">
+            <div class = "form-row" id="pppInputRow" style="display:none">
+                <label for="pppInputs">Number of years</label>
+                <input type="text" class="form-control" id="pppYears" name="pppYears" value="3">
+                <label for="pppInputs">Penalty</label>
+                <input type="text" class="form-control" id="pppFee" name="pppFee" value="321">
+                <small class="form-text text-muted">Format: 321 means 3% in the first year, 2% in the second year, etc.</small>
+            </div>
+        </div>
+
+        <div class = "form-row">
+            <label for="tax">Property Tax (Annual)</label>
+            <input type="text" class="form-control" id="tax" name="tax" value="$2,000" required>
+        </div>
+        <div class = "form-row">
+            <label for="insurance">Home Insurance (Annual)</label>
+            <input type="text" class="form-control" id="insurance" name="insurance" value="$600" required>
+        </div>
+        <div class = "form-row">
+            <label for="otherCosts">Other Costs (Annual)</label>
+            <input type="text" class="form-control" id="otherCosts" name="otherCosts" value="$50" required>
+        </div>
+
+        <div class = "card">
+            <strong>Maintenance</strong>
+            <div class = "form-row">
+                <label for="maintenance">Average Monthly Maintenance Expense</label>
+                <input type="text" class="form-control" name = "maintenance" id="maintenance" value="200" required>
+            </div>
+            <div class = "form-row">
+                <label for="maintenanceSkew" class="form-label">Distribution Skew</label>
+                <input type="range" class="form-range" min="1" max="10" id="maintenanceSkew" name="maintenanceSkew" value = "3" required>
+                <small class="form-text text-muted">Higher value = higher spread (higher Std Dev)</small>
+            </div>
+
+            <div id="plot_maint">
+                <py-script >
+                range1_maint = document.querySelector("#maintenanceSkew")
+                range2_maint = document.querySelector("#maintenance")
+
+                def on_range_update_maint(event):
+                    targetMean = float(Element("maintenance").element.value)
+                    skew = int(Element("maintenanceSkew").element.value)
+                    fig = plot_beta_prime(skew=skew,targetMean=targetMean,parameter='maintenance')
+                    pyscript.write("plot_maint",fig)
+                proxy = create_proxy(on_range_update_maint)
+                range1_maint.addEventListener("change", proxy)
+                range2_maint.addEventListener("change", proxy)
+                on_range_update_maint('') #So the chart is created the first time
+
+                </py-script>
+            </div>
+        </div>
+        
+        <br>
+        <!--Inflation-->
+        <div class="card">
+            <strong>Inflation</strong>
+            <div class="form-row">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label for="meanInflationGroup">Average Annual Inflation</label>
+                        <div class="input-group" id="meanInflationGroup">
+                            
+                            <input type="text" class="form-control" id="mean_inflation" name="mean_inflation" value="2.81" required>
+                            <div class="input-group-append">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <label for="inflationStdGroup">Standard Deviation</label>
+                        <div class="input-group" id="inflationStdGroup">
+                            
+                            <input type="text" class="form-control" id="std_inflation" name="std_inflation" value="1.53" required>
+                            <div class="input-group-append">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="plot_inflation">
+            <py-script>
+            range1_inflation = document.querySelector("#mean_inflation")
+            range2_inflation = document.querySelector("#std_inflation")
+
+            def on_range_update_inflation(event):
+                mean = float(Element("mean_inflation").element.value)
+                std = float(Element("std_inflation").element.value)
+                fig = plot_normal(std=std, mean=mean, parameter='inflation')
+                pyscript.write("plot_inflation",fig)
+
+            proxy = create_proxy(on_range_update_inflation)
+            range1_inflation.addEventListener("change", proxy)
+            range2_inflation.addEventListener("change", proxy)
+
+            on_range_update_inflation('') #So the chart is created the first time
+            </py-script>
+            </div>
+        </div>
+
+        <br>
+        <div class="card">
+            <strong>Rent</strong>
+            <div class = "form-row">
+                <label for="rent">Monthly Rent</label>
+                <input type="text" class="form-control" id="rent" name="rent" value="$1,200" required>
+                <small class="form-text text-muted">
+                    Free Zillow Rent Estimate
+                    <a href="https://www.zillow.com/rental-manager/price-my-rental/">here.</a>
+                </small>
+            </div>
+            <!--Rent Growth-->
+
+            <div class="form-row">
+                <div class="col-6">
+                    <label for="meanRentGrowthGroup">Average Annual Rent Growth</label>
+                    <div class="input-group" id="meanRentGrowthGroup">
+                        
+                        <input type="text" class="form-control" id="mean_rentGrowth" name="mean_rentGrowth" value="3.53" required>
+                        <div class="input-group-append">
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <label for="rentGrowthStdGroup">Standard Deviation</label>
+                    <div class="input-group" id="rentGrowthStdGroup">
+                        
+                        <input type="text" class="form-control" id="std_rentGrowth" name="std_rentGrowth" value="1.36" required>
+                        <div class="input-group-append">
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="plot_rentGrowth">
+            <py-script>
+            range1_rentGrowth = document.querySelector("#mean_rentGrowth")
+            range2_rentGrowth = document.querySelector("#std_rentGrowth")
+
+            def on_range_update_rentGrowth(event):
+                mean = float(Element("mean_rentGrowth").element.value)
+                std = float(Element("std_rentGrowth").element.value)
+                fig = plot_normal(std=std, mean=mean, parameter='rent')
+                pyscript.write("plot_rentGrowth",fig)
+
+            proxy = create_proxy(on_range_update_rentGrowth)
+            range1_rentGrowth.addEventListener("change", proxy)
+            range2_rentGrowth.addEventListener("change", proxy)
+
+            on_range_update_rentGrowth('') #So the chart is created the first time
+            </py-script>
+            </div>    
+        </div>
+        <br>
+        <div class="card">
+            <strong>Tenant Length of Stay</strong>
+            <div class = "form-row">
+                <label for="mean_stay">Average Tenant Stay (months)</label>
+                <input type="text" class="form-control" name = "mean_stay" id="mean_stay" value="36" required>
+            </div>
+            <div class = "form-row">
+                <label for="skew_stay" class="form-label">Distribution Skew</label>
+                <input type="range" class="form-range" min="1" max="10" id="skew_stay" name="skew_stay" value = "3" required>
+                <small class="form-text text-muted">Higher value = higher spread (higher Std Dev)</small>
+            </div>
+
+            <div id="plot_stay">
+                <py-script >
+                range1_stay = document.querySelector("#skew_stay")
+                range2_stay = document.querySelector("#mean_stay")
+
+                def on_range_update_stay(event):
+                    targetMean = float(Element("mean_stay").element.value)
+                    skew = int(Element("skew_stay").element.value)
+                    fig = plot_beta_prime(skew=skew,targetMean=targetMean,parameter='tenantStay')
+                    pyscript.write("plot_stay",fig)
+                proxy = create_proxy(on_range_update_stay)
+                range1_stay.addEventListener("change", proxy)
+                range2_stay.addEventListener("change", proxy)
+                on_range_update_stay('') #So the chart is created the first time
+
+                </py-script>
+            </div>
+        </div>
+        <div class = "form-row">
+            <label for="turnLength">Average Length of Turn (mo)</label>
+            <input type="text" class="form-control" id="turnLength" name="turnLength" value=".5" required>
+        </div>    
+        
+        <!--Property Manager-->
+        <div class="form-row">
+            <label for="pm">Property Manager?</label>
+            <br>
+            <div class="custom-control custom-radio custom-control-inline" onclick="hideShow('pmInputRow','hide')" style="margin-left:30px;">
+                <input type="radio" id="pmNo" name="pmNo" class="custom-control-input" value="No" checked="">
+                <label class="custom-control-label" for="pmNo">No</label>
+            </div>
+            <div class="custom-control custom-radio custom-control-inline" onclick="hideShow('pmInputRow','show')">
+                <input type="radio" id="pmYes" name="pmNo" class="custom-control-input" value="Yes">
+                <label class="custom-control-label" for="pmYes">Yes</label>
+            </div>
+        </div>
+        <div class = "form-row" name="pm" style="margin-left: 40px;">
+            <div class = "form-row" id="pmInputRow" style="display:none">
+                <label for="pmFeeGroup">Percent of Rent Fees</label>
+                <div class="input-group" id="pmFeeGroup">
+                    <input type="text" class="form-control" id="pmFeePerc" name="pmFeePerc" value="9">
+                    <div class="input-group-append">
+                        <span class="input-group-text">%</span>
+                    </div>
+                </div>
+                <label for="pmInputs">Flat Annual Fees</label>
+                <input type="text" class="form-control" id="pmFeeFlat" name="pmFeeFlat" value="$300">
+                <label for="leaseFeeGroup">Lease Fee (% of Monthly Rent)</label>
+                <div class="input-group" id="leaseFeeGroup">
+                    <input type="text" class="form-control" id="pmLeaseFee" name="pmLeaseFee" value="100">
+                    <div class="input-group-append">
+                        <span class="input-group-text">%</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        <br>
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+</div>
+{% endblock %}

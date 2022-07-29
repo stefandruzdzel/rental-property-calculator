@@ -1,0 +1,33 @@
+
+Project Summary:
+An online rental property calculator, for a simple purchase with a loan.
+It will improve on the free calculators out there by:
+    a) Automatically pulling in data, where possible
+    b) Simulating volatility: IE: Other calculators may assume maintenance is $200/mo, while in reality sometimes it's $0, othertimes it's $3000.
+
+
+
+To Do:
+
+x1. Copy in Flask and HTML templates from CS50 assignment, as a starting point
+x2. Make sure Flask and other required libraries work in my coding environment
+3. Read up on what should be contained in my Read ME file
+I'll do this properly once I figure out how to use git
+https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-readmes
+x4. Look at other calculators for inspiration, save URL's to give them credit as inspiration
+x5. Plan out a version of the form 
+x6. Plan the outputs I'll want, graphs charts etc
+x7. Decide on the technology I'll need to create the outputs
+    a) Output a table
+    b) https://jakevdp.github.io/blog/2013/12/05/static-interactive-widgets/
+x8. Decide on the distributions I'll use for simulation: IE: Maintenance avg is $200/mo, find a right skewed distribution that fits that
+9. Create that form in HTML
+10. Run necessary Python calculations for basic numeric outputs
+11. Create the fancy graph / chart outputs
+12. Webscrape property information based on an address
+13. Scrape Rent Zestimate
+14. Scrape Airbnb estimate from Rabbu or Airdna
+15. Save proforma some how, export to pdf, or use a login, or ?=
+16. Improve assumptions by pulling in historical trends (appreciation, rent growth)
+
+
